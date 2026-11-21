@@ -1,0 +1,46 @@
+STATEMENT OF WORK
+Client: Nila Logistics Pvt Ltd, Chennai
+Project: Nila Connect - Customer Service and Shipment Portal
+Date: 12 November 2026
+
+1. BACKGROUND
+Nila Logistics moves 4,000+ shipments a day across South India for 1,200 B2B customers. Today customers call or email the support desk to track shipments, raise damage claims and download invoices. The support team of 25 agents spends most of its time on these repetitive requests. Nila wants a self-service experience on Salesforce.
+
+2. SCOPE OF WORK
+2.1 Customer Self-Service Portal
+- Branded portal on Salesforce Experience Cloud for B2B customers with login, profile and multi-user accounts.
+- Customers can raise and track service requests and damage claims with photo upload.
+
+2.2 Live Shipment Tracking
+- Real-time shipment status and map view inside the portal.
+- Shipment events come from Nila's existing TMS (Transport Management System) through REST APIs.
+
+2.3 SAP Invoice Integration
+- Invoices and payment status must be pulled from SAP S/4HANA and shown in the portal.
+- Customers can download invoice PDFs.
+- SAP API documentation will be shared after the project kick-off.
+
+2.4 Service Cloud for Support Agents
+- Case management with SLA timers, auto-assignment by region and escalation rules.
+- Agent console showing customer, shipment and invoice details in one view.
+
+2.5 WhatsApp Notifications
+- Automatic WhatsApp updates to customers on shipment pickup, delay and delivery.
+- WhatsApp Business provider is yet to be finalised by Nila.
+
+2.6 Data Migration
+- Migrate 1,200 customer accounts, 8,000 contacts and 2 years of open claims from the legacy MySQL helpdesk.
+
+2.7 Management Dashboards
+- Dashboards for claims, SLA compliance and customer satisfaction. Exact list of reports to be decided during the project.
+
+3. TIMELINE
+Nila requires go-live within 8 weeks from kick-off to align with the festive season peak.
+
+4. COMMERCIAL TERMS
+- Fixed price engagement.
+- A penalty of 2% of contract value per week applies for any delay in go-live.
+
+5. ASSUMPTIONS
+- Nila will provide a UAT environment for TMS and SAP.
+- Nila's IT team has limited availability (one part-time contact).

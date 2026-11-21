@@ -1,0 +1,177 @@
+<template>
+    <div class="bp">
+        <template lwc:if={error}>
+            <div class="error">{error}</div>
+        </template>
+
+        <template lwc:if={hasData}>
+            <!-- Header -->
+            <div class="hero">
+                <div class="hero-left">
+                    <div class="brand">✈ BidPilot <span class="live"><span class="dot"></span>Live</span></div>
+                    <div class="title">{data.projectTitle}</div>
+                    <div class="subtitle">{data.clientName} · {data.bidNumber}</div>
+                </div>
+                <div class={statusClass}>{data.status}</div>
+            </div>
+
+            <!-- Steps -->
+            <div class="steps">
+                <template for:each={steps} for:item="s">
+                    <div key={s.key} class={s.cls}>
+                        <div class="step-num">{s.num}</div>
+                        <div class="step-label">{s.label}</div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- KPIs -->
+            <div class="kpis">
+                <div class="kpi">
+                    <div class="kpi-label">Total effort</div>
+                    <div class="kpi-value">{hoursText}<span class="unit">hrs</span></div>
+                    <div class="kpi-sub">{calibrationText}</div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-label">Investment</div>
+                    <div class="kpi-value">{costText}</div>
+                    <div class="kpi-sub">Rate-card based</div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-label">Duration</div>
+                    <div class="kpi-value">{weeksText}<span class="unit">wks</span></div>
+                    <div class={timelineClass}>{requestedText}</div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-label">Team</div>
+                    <div class="kpi-value">{teamCount}<span class="unit">people</span></div>
+                    <div class="kpi-sub">{gapText}</div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <!-- Risk -->
+                <div class="card">
+                    <div class="card-title">Risk</div>
+                    <div class="gauge">
+                        <svg viewBox="0 0 200 115" class="gauge-svg">
+                            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e6e8ee" stroke-width="16" stroke-linecap="round"></path>
+                            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke={riskColor} stroke-width="16"
+                                stroke-linecap="round" stroke-dasharray={riskDash} class="gauge-fill"></path>
+                            <text x="100" y="92" text-anchor="middle" class="gauge-num">{riskScore}</text>
+                        </svg>
+                        <div class="gauge-label">{riskLevelText}</div>
+                    </div>
+                    <template lwc:if={hasRisk}>
+                        <ul class="reasons">
+                            <template for:each={riskReasons} for:item="r">
+                                <li key={r.key}>{r.text}</li>
+                            </template>
+                        </ul>
+                    </template>
+                    <template lwc:else>
+                        <ul class="reasons muted">
+                            <template for:each={sowRisks} for:item="r">
+                                <li key={r.key}>{r.text}</li>
+                            </template>
+                        </ul>
+                    </template>
+
+                    <template lwc:if={isPending}>
+                        <div class="approval">
+                            <div class="approval-title">⚠ Manager approval required</div>
+                            <lightning-textarea label="Comments" variant="label-hidden" placeholder="Conditions or reason (optional)"
+                                value={comments} onchange={handleComments}></lightning-textarea>
+                            <div class="approval-actions">
+                                <lightning-button variant="destructive-text" label="Reject" onclick={handleReject} disabled={busy}></lightning-button>
+                                <lightning-button variant="brand" label="Approve" onclick={handleApprove} disabled={busy}></lightning-button>
+                            </div>
+                        </div>
+                    </template>
+                    <template lwc:if={data.approvalComments}>
+                        <div class="approval-note">{data.approvalComments}</div>
+                    </template>
+                </div>
+
+                <!-- Modules -->
+                <div class="card span2">
+                    <div class="card-title">Scope modules <span class="chip">{data.techStack}</span></div>
+                    <template lwc:if={hasModules}>
+                        <div class="modules">
+                            <template for:each={modules} for:item="m">
+                                <div key={m.id} class="module">
+                                    <div class="module-head">
+                                        <span class="module-name">{m.name}</span>
+                                        <span class={m.badge}>{m.complexity}</span>
+                                        <span class="module-skill">{m.skill}</span>
+                                        <span class="module-hours">{m.hoursText}</span>
+                                    </div>
+                                    <div class="bar"><div class="bar-fill" style={m.barStyle}></div></div>
+                                    <template lwc:if={m.description}>
+                                        <div class="module-desc">{m.description}</div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                    <template lwc:else>
+                        <div class="empty">Ask the agent to analyse this SOW to extract modules.</div>
+                    </template>
+                    <template lwc:if={hasSimilar}>
+                        <div class="similar">
+                            <div class="similar-title">Calibrated against</div>
+                            <template for:each={similar} for:item="s">
+                                <div key={s.key} class="similar-row">{s.text}</div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Team -->
+            <div class="card">
+                <div class="card-title">Suggested team</div>
+                <template lwc:if={hasTeam}>
+                    <div class="team">
+                        <template for:each={team} for:item="t">
+                            <div key={t.id} class={t.cardCls}>
+                                <div class="avatar">{t.initials}</div>
+                                <div class="member-info">
+                                    <div class="member-name">{t.name}</div>
+                                    <div class="member-role">{t.role}</div>
+                                    <div class="member-meta">{t.skill} · {t.allocText} · {t.hoursText}</div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+                <template lwc:else>
+                    <div class="empty">Team appears here after estimation.</div>
+                </template>
+            </div>
+
+            <!-- Proposal -->
+            <template lwc:if={hasProposal}>
+                <div class="card">
+                    <div class="doc-head">
+                        <div class="tabs">
+                            <button class={proposalTabCls} onclick={showProposal}>Proposal</button>
+                            <button class={emailTabCls} onclick={showEmail}>Client email</button>
+                        </div>
+                        <div class="doc-actions">
+                            <template lwc:if={hasOpportunity}>
+                                <lightning-button label="Open Opportunity" icon-name="standard:opportunity" onclick={openOpportunity}></lightning-button>
+                            </template>
+                            <lightning-button label="Copy" icon-name="utility:copy" onclick={copyDoc}></lightning-button>
+                        </div>
+                    </div>
+                    <pre class="doc">{docText}</pre>
+                </div>
+            </template>
+        </template>
+
+        <template lwc:if={showSpinner}>
+            <div class="loading"><lightning-spinner alternative-text="Loading" size="small"></lightning-spinner></div>
+        </template>
+    </div>
+</template>

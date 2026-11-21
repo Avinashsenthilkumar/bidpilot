@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SOW_Content__c</fullName>
+    <label>SOW Content</label>
+    <length>131072</length>
+    <visibleLines>15</visibleLines>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+</CustomField>
