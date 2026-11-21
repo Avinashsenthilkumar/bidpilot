@@ -61,6 +61,35 @@
                 </template>
             </div>
 
+            <!-- ================= DOCUMENTS ================= -->
+            <div class="docs">
+                <div class="doc-card">
+                    <div class="doc-icon i-blue">📄</div>
+                    <div class="doc-info">
+                        <div class="doc-title">Statement of Work</div>
+                        <div class="doc-main">{sowText}</div>
+                        <template lwc:if={uploading}>
+                            <div class="doc-sub busy"><span class="mini-spin"></span>{uploadMsg}</div>
+                        </template>
+                        <template lwc:else><div class="doc-sub">{sowSub}</div></template>
+                    </div>
+                    <input type="file" accept="application/pdf,.pdf" class="file-input" onchange={handleFile} />
+                    <lightning-button label={uploadLabel} icon-name="utility:upload" onclick={openPicker} disabled={uploading}></lightning-button>
+                </div>
+                <div class="doc-card">
+                    <div class="doc-icon i-violet">📑</div>
+                    <div class="doc-info">
+                        <div class="doc-title">Proposal PDF</div>
+                        <div class="doc-main">Client-ready document</div>
+                        <div class="doc-sub">{pdfSub}</div>
+                    </div>
+                    <div class="doc-btns">
+                        <lightning-button label="Download" icon-name="utility:download" onclick={downloadPdf} disabled={pdfDisabled}></lightning-button>
+                        <lightning-button variant="brand" label="Save to Files" icon-name="utility:file" onclick={savePdf} disabled={pdfDisabled}></lightning-button>
+                    </div>
+                </div>
+            </div>
+
             <!-- ================= KPIs ================= -->
             <div class="kpis">
                 <div class={hoursCls}>

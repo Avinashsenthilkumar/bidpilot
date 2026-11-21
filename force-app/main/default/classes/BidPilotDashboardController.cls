@@ -42,6 +42,7 @@ public with sharing class BidPilotDashboardController {
         @AuraEnabled public String email;
         @AuraEnabled public String approvalComments;
         @AuraEnabled public String opportunityId;
+        @AuraEnabled public Integer sowWords;
         @AuraEnabled public List<ModuleRow> modules = new List<ModuleRow>();
         @AuraEnabled public List<MemberRow> team = new List<MemberRow>();
     }
@@ -71,6 +72,7 @@ public with sharing class BidPilotDashboardController {
             d.email = b.Client_Email_Draft__c;
             d.approvalComments = b.Approval_Comments__c;
             d.opportunityId = b.Opportunity__c;
+            d.sowWords = String.isBlank(b.SOW_Content__c) ? 0 : b.SOW_Content__c.trim().split('\\s+').size();
             for (Bid_Module__c m : b.Modules__r) {
                 ModuleRow r = new ModuleRow();
                 r.id = m.Id; r.name = m.Name; r.complexity = m.Complexity__c; r.skill = m.Skill__c;

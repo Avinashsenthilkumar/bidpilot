@@ -1,10 +1,15 @@
 import { LightningElement, api, track } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { NavigationMixin } from 'lightning/navigation';
+import { loadScript } from 'lightning/platformResourceLoader';
+import PDFJS from '@salesforce/resourceUrl/pdfjs';
 import getBidData from '@salesforce/apex/BidPilotDashboardController.getBidData';
+import saveSow from '@salesforce/apex/BidPilotDocsController.saveSow';
+import saveProposalPdf from '@salesforce/apex/BidPilotDocsController.saveProposalPdf';
 import decide from '@salesforce/apex/BidPilotDashboardController.decide';
 
 const POLL_MS = 4000;
+const MAX_ATTACH_BYTES = 3 * 1024 * 1024; // keep the original PDF if it is under 3 MB
 const FLASH_MS = 1600;
 const ARC = 251.33; // half circumference for r = 80
 const STEPS = ['Draft', 'Analyzed', 'Estimated', 'Team Assigned', 'Approval', 'Proposal Ready'];
@@ -352,6 +357,113 @@ export default class BidPilotDashboard extends NavigationMixin(LightningElement)
             type: 'standard__recordPage',
             attributes: { recordId: this.data.opportunityId, objectApiName: 'Opportunity', actionName: 'view' }
         });
+    }
+
+    // ---------------------------------------------------------------- SOW PDF upload
+    uploading = false;
+    uploadMsg;
+    pdfBusy = false;
+    _pdfjs;
+
+    get sowLoaded() { return (this.data?.sowWords || 0) > 0; }
+    get sowText() {
+        return this.sowLoaded ? `${this.fmt(this.data.sowWords)} words loaded` : 'No SOW yet';
+    }
+    get sowSub() {
+        return this.sowLoaded ? 'Upload a new PDF to replace it' : 'Upload the client SOW as a PDF';
+    }
+    get uploadLabel() { return this.sowLoaded ? 'Replace SOW PDF' : 'Upload SOW PDF'; }
+
+    async ensurePdfJs() {
+        if (this._pdfjs) return this._pdfjs;
+        await loadScript(this, PDFJS + '/pdf.min.js');
+        // Loading the worker on the main thread lets pdf.js run without a Web Worker (works under Lightning security)
+        await loadScript(this, PDFJS + '/pdf.worker.min.js');
+        const lib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
+        if (!lib) throw new Error('The PDF reader could not be loaded.');
+        lib.GlobalWorkerOptions.workerSrc = PDFJS + '/pdf.worker.min.js';
+        this._pdfjs = lib;
+        return lib;
+    }
+
+    openPicker() {
+        this.template.querySelector('input.file-input').click();
+    }
+
+    async handleFile(event) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = null;
+        if (!file) return;
+        if (!/\.pdf$/i.test(file.name)) {
+            this.toast('Not a PDF', 'Please choose a .pdf file.', 'warning');
+            return;
+        }
+        this.uploading = true;
+        this.uploadMsg = 'Opening PDF…';
+        try {
+            const buffer = await file.arrayBuffer();
+            const base64 = file.size <= MAX_ATTACH_BYTES ? this.toBase64(buffer) : null;
+            const lib = await this.ensurePdfJs();
+            const pdf = await lib.getDocument({ data: new Uint8Array(buffer.slice(0)), isEvalSupported: false }).promise;
+            let text = '';
+            for (let p = 1; p <= pdf.numPages; p++) {
+                this.uploadMsg = `Reading page ${p} of ${pdf.numPages}…`;
+                // eslint-disable-next-line no-await-in-loop
+                const page = await pdf.getPage(p);
+                // eslint-disable-next-line no-await-in-loop
+                const content = await page.getTextContent();
+                text += content.items.map((i) => i.str + (i.hasEOL ? '\n' : ' ')).join('') + '\n\n';
+            }
+            this.uploadMsg = 'Saving SOW…';
+            const msg = await saveSow({ bidId: this.recordId, sowText: text, fileName: file.name, base64Pdf: base64 });
+            this.lastEvent = 'SOW uploaded from ' + file.name;
+            this.lastEventAt = Date.now();
+            this.toast('SOW uploaded', msg, 'success');
+            await this.load();
+        } catch (e) {
+            this.toast('Upload failed', e?.body?.message || e?.message || 'Could not read the PDF', 'error');
+        } finally {
+            this.uploading = false;
+            this.uploadMsg = null;
+        }
+    }
+
+    toBase64(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        }
+        return btoa(binary);
+    }
+
+    // ---------------------------------------------------------------- proposal PDF
+    get pdfReady() { return this.data?.cost != null && (this.data?.modules || []).length > 0; }
+    get pdfDisabled() { return !this.pdfReady || this.pdfBusy; }
+    get pdfSub() {
+        if (!this.pdfReady) return 'Available after estimation';
+        return this.data?.status === 'Proposal Ready' ? 'Final proposal: scope, team, timeline, commercials, risks'
+            : 'Draft: scope, team, timeline, commercials, risks';
+    }
+    downloadPdf() {
+        window.open('/apex/BidPilotProposal?id=' + this.recordId, '_blank');
+    }
+    async savePdf() {
+        this.pdfBusy = true;
+        try {
+            const docId = await saveProposalPdf({ bidId: this.recordId });
+            this.toast('Saved to Files', 'Proposal PDF attached to this bid.', 'success');
+            this[NavigationMixin.Navigate]({
+                type: 'standard__namedPage',
+                attributes: { pageName: 'filePreview' },
+                state: { selectedRecordId: docId }
+            });
+        } catch (e) {
+            this.toast('PDF failed', e?.body?.message || 'Could not create the PDF', 'error');
+        } finally {
+            this.pdfBusy = false;
+        }
     }
 
     toast(title, message, variant) {

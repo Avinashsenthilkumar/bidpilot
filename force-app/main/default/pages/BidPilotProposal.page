@@ -1,0 +1,169 @@
+<apex:page standardController="Bid__c" extensions="BidPilotProposalPdfController" renderAs="pdf"
+           applyHtmlTag="false" applyBodyTag="false" showHeader="false" sidebar="false" standardStylesheets="false">
+<html>
+<head>
+<style type="text/css">
+    @page {
+        size: A4;
+        margin: 22mm 16mm 20mm 16mm;
+        @top-left { content: "{!JSENCODE(companyName)}  |  Proposal {!JSENCODE(bid.Name)}"; font-family: sans-serif; font-size: 8pt; color: #6b7280; }
+        @bottom-left { content: "Confidential - prepared for {!JSENCODE(bid.Client_Name__c)}"; font-family: sans-serif; font-size: 8pt; color: #6b7280; }
+        @bottom-right { content: "Page " counter(page) " of " counter(pages); font-family: sans-serif; font-size: 8pt; color: #6b7280; }
+    }
+    @page :first { @top-left { content: ""; } }
+    body { font-family: sans-serif; font-size: 10pt; color: #111827; line-height: 1.45; }
+    h1 { font-size: 24pt; margin: 0; color: #ffffff; }
+    h2 { font-size: 13pt; color: #1e1b4b; border-bottom: 2px solid #4f46e5; padding-bottom: 4px; margin: 22px 0 10px 0; }
+    p { margin: 0 0 8px 0; }
+    .cover { background-color: #1e1b4b; color: #ffffff; padding: 26px 24px; }
+    .cover-brand { font-size: 9pt; letter-spacing: 2px; color: #a5b4fc; }
+    .cover-sub { font-size: 12pt; color: #c7d2fe; margin-top: 6px; }
+    .cover-strip { background-color: #4f46e5; height: 6px; }
+    .meta { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    .meta td { padding: 6px 8px; font-size: 9pt; border-bottom: 1px solid #e5e7eb; }
+    .meta td.k { color: #6b7280; width: 28%; }
+    .kpis { width: 100%; border-collapse: separate; border-spacing: 6px; margin: 6px -6px; }
+    .kpi { background-color: #eef0ff; padding: 10px; text-align: center; width: 25%; }
+    .kpi-v { font-size: 15pt; font-weight: bold; color: #1e1b4b; }
+    .kpi-l { font-size: 7.5pt; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; }
+    table.grid { width: 100%; border-collapse: collapse; font-size: 9pt; }
+    table.grid th { background-color: #4f46e5; color: #ffffff; text-align: left; padding: 6px; font-size: 8.5pt; }
+    table.grid td { padding: 6px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+    table.grid tr.alt td { background-color: #f8f9fc; }
+    .num { text-align: right; }
+    .badge-High { color: #c62a2f; font-weight: bold; }
+    .badge-Medium { color: #9a6700; font-weight: bold; }
+    .badge-Low { color: #18794e; font-weight: bold; }
+    .total td { font-weight: bold; background-color: #eef0ff; }
+    .note { background-color: #fff6e5; border-left: 4px solid #f5a524; padding: 8px 10px; font-size: 9pt; margin: 8px 0; }
+    .ok { background-color: #e9f8ef; border-left: 4px solid #30a46c; padding: 8px 10px; font-size: 9pt; margin: 8px 0; }
+    ul { margin: 4px 0 8px 0; padding-left: 18px; }
+    li { margin-bottom: 3px; }
+    .muted { color: #6b7280; font-size: 8.5pt; }
+    .sign td { padding-top: 40px; width: 50%; font-size: 9pt; }
+    .line { border-top: 1px solid #111827; padding-top: 4px; width: 80%; }
+    .pb { page-break-before: always; }
+    .keep { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<div class="cover">
+    <div class="cover-brand">{!UPPER(companyName)}  &#8226;  PROPOSAL</div>
+    <h1>{!bid.Project_Title__c}</h1>
+    <div class="cover-sub">Prepared for {!bid.Client_Name__c}</div>
+</div>
+<div class="cover-strip"></div>
+
+<table class="meta">
+    <tr><td class="k">Proposal reference</td><td>{!bid.Name}</td></tr>
+    <tr><td class="k">Prepared by</td><td>{!preparedBy}, {!companyName}</td></tr>
+    <tr><td class="k">Date</td><td>{!preparedOn}</td></tr>
+    <tr><td class="k">Valid until</td><td>{!validUntil}</td></tr>
+    <tr><td class="k">Status</td><td>{!bid.Status__c}</td></tr>
+</table>
+
+<h2>1. Executive summary</h2>
+<p>Thank you for the opportunity to propose for <b>{!bid.Project_Title__c}</b>. Based on our review of your statement of work,
+we will deliver <b>{!modules.size} modules</b> using <b>{!IF(ISBLANK(bid.Tech_Stack__c), 'the agreed technology stack', bid.Tech_Stack__c)}</b>
+with a dedicated team of <b>{!team.size}</b>, in about <b>{!duration}</b>, for a total investment of <b>{!totalCost}</b>.</p>
+<p>Our estimate is calibrated against similar projects we have delivered, so it reflects real delivery effort rather than a best-case guess.</p>
+
+<table class="kpis">
+    <tr>
+        <td class="kpi"><div class="kpi-v">{!totalCost}</div><div class="kpi-l">Investment</div></td>
+        <td class="kpi"><div class="kpi-v">{!duration}</div><div class="kpi-l">Duration</div></td>
+        <td class="kpi"><div class="kpi-v">{!totalHours} h</div><div class="kpi-l">Total effort</div></td>
+        <td class="kpi"><div class="kpi-v">{!team.size}</div><div class="kpi-l">Team members</div></td>
+    </tr>
+</table>
+
+<!-- ============ SCOPE ============ -->
+<h2>2. Scope of work</h2>
+<table class="grid">
+    <tr><th style="width:5%">#</th><th style="width:27%">Module</th><th style="width:12%">Complexity</th><th style="width:16%">Primary skill</th><th style="width:10%" class="num">Hours</th><th>Description</th></tr>
+    <apex:repeat value="{!modules}" var="m">
+        <tr class="{!IF(MOD(m.num, 2) == 0, 'alt', '')}">
+            <td>{!m.num}</td><td><b>{!m.name}</b></td><td class="badge-{!m.complexity}">{!m.complexity}</td>
+            <td>{!m.skill}</td><td class="num">{!m.hours}</td><td>{!m.description}</td>
+        </tr>
+    </apex:repeat>
+    <tr class="total"><td></td><td colspan="3">Total including QA and project management</td><td class="num">{!totalHours}</td><td></td></tr>
+</table>
+<p class="muted">Effort includes 15% for quality assurance and 10% for project management.</p>
+
+<!-- ============ TEAM ============ -->
+<div class="keep">
+<h2>3. Proposed team</h2>
+<table class="grid">
+    <tr><th>Name</th><th>Role</th><th>Skill</th><th class="num">Allocation</th><th class="num">Hours</th><th class="num">Cost</th></tr>
+    <apex:repeat value="{!team}" var="t">
+        <tr><td><b>{!t.name}</b></td><td>{!t.role}</td><td>{!t.skill}</td><td class="num">{!t.allocation}</td><td class="num">{!t.hours}</td><td class="num">{!t.cost}</td></tr>
+    </apex:repeat>
+    <tr class="total"><td colspan="4">Total</td><td class="num">{!totalHours}</td><td class="num">{!totalCost}</td></tr>
+</table>
+<apex:outputPanel layout="none" rendered="{!openCount > 0}">
+    <p class="muted">{!openCount} role(s) marked "To be onboarded" will be filled before kick-off.</p>
+</apex:outputPanel>
+</div>
+
+<!-- ============ TIMELINE & COMMERCIALS ============ -->
+<div class="keep">
+<h2>4. Timeline and commercials</h2>
+<table class="meta">
+    <tr><td class="k">Requested timeline</td><td>{!requested}</td></tr>
+    <tr><td class="k">Planned duration</td><td>{!duration}</td></tr>
+</table>
+<div class="{!IF(CONTAINS(timelineNote, 'fits'), 'ok', 'note')}">{!timelineNote}</div>
+
+<table class="grid" style="margin-top:8px">
+    <tr><th>Payment milestone</th><th>Target</th><th class="num">Share</th><th class="num">Amount</th></tr>
+    <apex:repeat value="{!milestones}" var="ms">
+        <tr><td>{!ms.name}</td><td>{!ms.week}</td><td class="num">{!ms.pct}</td><td class="num">{!ms.amount}</td></tr>
+    </apex:repeat>
+    <tr class="total"><td colspan="2">Total (excluding applicable taxes)</td><td class="num">100%</td><td class="num">{!totalCost}</td></tr>
+</table>
+</div>
+
+<!-- ============ RISKS ============ -->
+<div class="keep">
+<h2>5. Risks, assumptions and mitigation</h2>
+<p>Overall delivery risk: <b>{!riskText}</b>. {!highCount} of the modules are high complexity.</p>
+<apex:outputPanel layout="none" rendered="{!hasSowRisks}">
+    <p><b>Points to resolve with you before kick-off:</b></p>
+    <ul>
+        <apex:repeat value="{!sowRisks}" var="r"><li>{!r}</li></apex:repeat>
+    </ul>
+</apex:outputPanel>
+<apex:outputPanel layout="none" rendered="{!hasRiskReasons}">
+    <p><b>How we scored the risk:</b></p>
+    <ul>
+        <apex:repeat value="{!riskReasons}" var="r"><li>{!r}</li></apex:repeat>
+    </ul>
+</apex:outputPanel>
+<apex:outputPanel layout="none" rendered="{!hasApproval}">
+    <div class="ok"><b>Internal review:</b> {!bid.Approval_Comments__c}</div>
+</apex:outputPanel>
+</div>
+
+<!-- ============ NEXT STEPS ============ -->
+<div class="keep">
+<h2>6. Next steps</h2>
+<ul>
+    <li>Walk-through call to review scope, team and timeline.</li>
+    <li>Close the open points listed in section 5.</li>
+    <li>Sign-off on this proposal and the first milestone to kick off.</li>
+</ul>
+
+<table style="width:100%" class="sign">
+    <tr>
+        <td><div class="line">For {!companyName}<br/>{!preparedBy}</div></td>
+        <td><div class="line">For {!bid.Client_Name__c}<br/>Name and signature</div></td>
+    </tr>
+</table>
+</div>
+
+</body>
+</html>
+</apex:page>
