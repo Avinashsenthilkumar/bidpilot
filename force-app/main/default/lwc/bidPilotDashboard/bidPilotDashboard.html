@@ -4,18 +4,54 @@
             <div class="error">{error}</div>
         </template>
 
+        <template lwc:if={showSpinner}>
+            <div class="loading"><lightning-spinner alternative-text="Loading" size="small"></lightning-spinner></div>
+        </template>
+
         <template lwc:if={hasData}>
-            <!-- Header -->
+            <!-- ================= HERO ================= -->
             <div class="hero">
-                <div class="hero-left">
-                    <div class="brand">✈ BidPilot <span class="live"><span class="dot"></span>Live</span></div>
-                    <div class="title">{data.projectTitle}</div>
-                    <div class="subtitle">{data.clientName} · {data.bidNumber}</div>
+                <div class="hero-top">
+                    <div class="hero-left">
+                        <div class="brand">
+                            <span class="brand-mark">✈</span> BidPilot
+                            <span class="live"><span class="dot"></span>Live</span>
+                            <template lwc:if={isWorking}>
+                                <span class="working"><span class="pulse-ring"></span>Agent working…</span>
+                            </template>
+                        </div>
+                        <div class="title">{data.projectTitle}</div>
+                        <div class="subtitle">
+                            <span>{data.clientName}</span><span class="sep">•</span>
+                            <span>{data.bidNumber}</span><span class="sep">•</span>
+                            <span>{requestedText}</span>
+                        </div>
+                    </div>
+                    <div class="hero-right">
+                        <div class={statusClass}>{data.status}</div>
+                        <div class="progress-label">{progressText}</div>
+                        <div class="progress"><div class="progress-fill" style={progressStyle}></div></div>
+                    </div>
                 </div>
-                <div class={statusClass}>{data.status}</div>
+                <template lwc:if={hasTech}>
+                    <div class="tech">
+                        <template for:each={techChips} for:item="t">
+                            <span key={t.key} class="tech-chip">{t.label}</span>
+                        </template>
+                    </div>
+                </template>
             </div>
 
-            <!-- Steps -->
+            <!-- last agent event -->
+            <template lwc:if={hasEvent}>
+                <div class="event">
+                    <span class="event-icon">⚡</span>
+                    <span class="event-text">{lastEvent}</span>
+                    <span class="event-time">{eventAgo}</span>
+                </div>
+            </template>
+
+            <!-- ================= STEPS ================= -->
             <div class="steps">
                 <template for:each={steps} for:item="s">
                     <div key={s.key} class={s.cls}>
@@ -25,56 +61,85 @@
                 </template>
             </div>
 
-            <!-- KPIs -->
+            <!-- ================= KPIs ================= -->
             <div class="kpis">
-                <div class="kpi">
-                    <div class="kpi-label">Total effort</div>
-                    <div class="kpi-value">{hoursText}<span class="unit">hrs</span></div>
+                <div class={hoursCls}>
+                    <div class="kpi-head"><span class="kpi-icon i-blue">⏱</span><span class="kpi-label">Total effort</span></div>
+                    <template lwc:if={hasHours}>
+                        <div class="kpi-value">{hoursText}<span class="unit">hrs</span></div>
+                    </template>
+                    <template lwc:else><div class="kpi-empty">Awaiting estimate</div></template>
                     <div class="kpi-sub">{calibrationText}</div>
                 </div>
-                <div class="kpi">
-                    <div class="kpi-label">Investment</div>
-                    <div class="kpi-value">{costText}</div>
-                    <div class="kpi-sub">Rate-card based</div>
+
+                <div class={costCls}>
+                    <div class="kpi-head"><span class="kpi-icon i-green">₹</span><span class="kpi-label">Investment</span></div>
+                    <template lwc:if={hasCost}>
+                        <div class="kpi-value">{costText}</div>
+                    </template>
+                    <template lwc:else><div class="kpi-empty">Awaiting estimate</div></template>
+                    <div class="kpi-sub">{costSub}</div>
                 </div>
-                <div class="kpi">
-                    <div class="kpi-label">Duration</div>
-                    <div class="kpi-value">{weeksText}<span class="unit">wks</span></div>
-                    <div class={timelineClass}>{requestedText}</div>
+
+                <div class={weeksCls}>
+                    <div class="kpi-head"><span class="kpi-icon i-amber">📅</span><span class="kpi-label">Duration</span></div>
+                    <template lwc:if={hasWeeks}>
+                        <div class="kpi-value">{weeksText}<span class="unit">wks</span></div>
+                    </template>
+                    <template lwc:else><div class="kpi-empty">Awaiting estimate</div></template>
+                    <template lwc:if={showTimelineBar}>
+                        <div class="tl">
+                            <div class="tl-row"><span class="tl-key">Asked</span><div class="tl-track"><div class="tl-fill tl-ask" style={requestedBarStyle}></div></div></div>
+                            <div class="tl-row"><span class="tl-key">Plan</span><div class="tl-track"><div class={estimatedBarCls} style={estimatedBarStyle}></div></div></div>
+                        </div>
+                    </template>
+                    <div class={weeksSubCls}>{weeksSub}</div>
                 </div>
-                <div class="kpi">
-                    <div class="kpi-label">Team</div>
-                    <div class="kpi-value">{teamCount}<span class="unit">people</span></div>
-                    <div class="kpi-sub">{gapText}</div>
+
+                <div class={teamCls}>
+                    <div class="kpi-head"><span class="kpi-icon i-violet">👥</span><span class="kpi-label">Team</span></div>
+                    <template lwc:if={hasTeam}>
+                        <div class="kpi-value">{teamCount}<span class="unit">people</span></div>
+                    </template>
+                    <template lwc:else><div class="kpi-empty">Not staffed yet</div></template>
+                    <div class={teamSubCls}>{teamSub}</div>
                 </div>
             </div>
 
             <div class="grid">
-                <!-- Risk -->
-                <div class="card">
-                    <div class="card-title">Risk</div>
+                <!-- ================= RISK ================= -->
+                <div class={riskCardCls}>
+                    <div class="card-title">Risk assessment <span class={riskPillCls}>{riskLevelText}</span></div>
                     <div class="gauge">
                         <svg viewBox="0 0 200 115" class="gauge-svg">
-                            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e6e8ee" stroke-width="16" stroke-linecap="round"></path>
+                            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#eceef3" stroke-width="16" stroke-linecap="round"></path>
                             <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke={riskColor} stroke-width="16"
                                 stroke-linecap="round" stroke-dasharray={riskDash} class="gauge-fill"></path>
-                            <text x="100" y="92" text-anchor="middle" class="gauge-num">{riskScore}</text>
+                            <text x="100" y="90" text-anchor="middle" class="gauge-num">{riskScoreText}</text>
+                            <text x="100" y="108" text-anchor="middle" class="gauge-cap">out of 100</text>
                         </svg>
-                        <div class="gauge-label">{riskLevelText}</div>
                     </div>
+
                     <template lwc:if={hasRisk}>
-                        <ul class="reasons">
+                        <div class="reasons">
                             <template for:each={riskReasons} for:item="r">
+                                <div key={r.key} class="reason">
+                                    <span class="reason-text">{r.text}</span>
+                                    <span class="reason-pts">{r.pts}</span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                    <template lwc:elseif={hasSowRisks}>
+                        <div class="mini-title">Risks found in the SOW</div>
+                        <ul class="sow-risks">
+                            <template for:each={sowRisks} for:item="r">
                                 <li key={r.key}>{r.text}</li>
                             </template>
                         </ul>
                     </template>
                     <template lwc:else>
-                        <ul class="reasons muted">
-                            <template for:each={sowRisks} for:item="r">
-                                <li key={r.key}>{r.text}</li>
-                            </template>
-                        </ul>
+                        <div class="empty small">Risk is scored after the team is staffed.</div>
                     </template>
 
                     <template lwc:if={isPending}>
@@ -93,9 +158,16 @@
                     </template>
                 </div>
 
-                <!-- Modules -->
-                <div class="card span2">
-                    <div class="card-title">Scope modules <span class="chip">{data.techStack}</span></div>
+                <!-- ================= MODULES ================= -->
+                <div class={modulesCls}>
+                    <div class="card-title">
+                        Scope modules
+                        <template lwc:if={hasModules}>
+                            <template for:each={complexityMix} for:item="c">
+                                <span key={c.key} class={c.cls}>{c.label}</span>
+                            </template>
+                        </template>
+                    </div>
                     <template lwc:if={hasModules}>
                         <div class="modules">
                             <template for:each={modules} for:item="m">
@@ -106,7 +178,7 @@
                                         <span class="module-skill">{m.skill}</span>
                                         <span class="module-hours">{m.hoursText}</span>
                                     </div>
-                                    <div class="bar"><div class="bar-fill" style={m.barStyle}></div></div>
+                                    <div class="bar"><div class={m.barCls} style={m.barStyle}></div></div>
                                     <template lwc:if={m.description}>
                                         <div class="module-desc">{m.description}</div>
                                     </template>
@@ -115,11 +187,15 @@
                         </div>
                     </template>
                     <template lwc:else>
-                        <div class="empty">Ask the agent to analyse this SOW to extract modules.</div>
+                        <div class="empty">
+                            <div class="empty-icon">📄</div>
+                            <div>Ask BidPilot to analyse this SOW.</div>
+                            <div class="hint">“Analyse the SOW for {data.bidNumber} and prepare the bid”</div>
+                        </div>
                     </template>
                     <template lwc:if={hasSimilar}>
                         <div class="similar">
-                            <div class="similar-title">Calibrated against</div>
+                            <div class="mini-title">Calibrated against past projects</div>
                             <template for:each={similar} for:item="s">
                                 <div key={s.key} class="similar-row">{s.text}</div>
                             </template>
@@ -128,29 +204,33 @@
                 </div>
             </div>
 
-            <!-- Team -->
+            <!-- ================= TEAM ================= -->
             <div class="card">
-                <div class="card-title">Suggested team</div>
+                <div class="card-title">Suggested team
+                    <template lwc:if={hasTeam}><span class="team-total">Total {teamTotal}</span></template>
+                </div>
                 <template lwc:if={hasTeam}>
                     <div class="team">
                         <template for:each={team} for:item="t">
                             <div key={t.id} class={t.cardCls}>
                                 <div class="avatar">{t.initials}</div>
                                 <div class="member-info">
-                                    <div class="member-name">{t.name}</div>
+                                    <div class="member-name">{t.displayName}</div>
                                     <div class="member-role">{t.role}</div>
-                                    <div class="member-meta">{t.skill} · {t.allocText} · {t.hoursText}</div>
+                                    <div class="member-skill">{t.skill}</div>
+                                    <div class="alloc"><div class="alloc-fill" style={t.allocStyle}></div></div>
+                                    <div class="member-meta"><span>{t.allocText} · {t.hoursText}</span><span class="member-cost">{t.costText}</span></div>
                                 </div>
                             </div>
                         </template>
                     </div>
                 </template>
                 <template lwc:else>
-                    <div class="empty">Team appears here after estimation.</div>
+                    <div class="empty small">The team is matched on skills and availability after estimation.</div>
                 </template>
             </div>
 
-            <!-- Proposal -->
+            <!-- ================= PROPOSAL ================= -->
             <template lwc:if={hasProposal}>
                 <div class="card">
                     <div class="doc-head">
@@ -168,10 +248,6 @@
                     <pre class="doc">{docText}</pre>
                 </div>
             </template>
-        </template>
-
-        <template lwc:if={showSpinner}>
-            <div class="loading"><lightning-spinner alternative-text="Loading" size="small"></lightning-spinner></div>
         </template>
     </div>
 </template>

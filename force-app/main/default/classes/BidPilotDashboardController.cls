@@ -16,6 +16,8 @@ public with sharing class BidPilotDashboardController {
         @AuraEnabled public String skill;
         @AuraEnabled public Decimal allocation;
         @AuraEnabled public Decimal hours;
+        @AuraEnabled public Decimal rate;
+        @AuraEnabled public Decimal cost;
         @AuraEnabled public Boolean isOpen;
     }
 
@@ -81,6 +83,8 @@ public with sharing class BidPilotDashboardController {
                 r.isOpen = t.Resource__c == null;
                 r.name = r.isOpen ? 'Open position' : t.Resource__r.Name;
                 r.role = t.Role__c; r.skill = t.Skill__c; r.allocation = t.Allocation__c; r.hours = t.Planned_Hours__c;
+                r.rate = (!r.isOpen && t.Resource__r.Hourly_Rate__c != null) ? t.Resource__r.Hourly_Rate__c : BidPilotService.DEFAULT_RATE;
+                r.cost = (BidPilotService.nz(t.Planned_Hours__c) * r.rate).setScale(0);
                 d.team.add(r);
             }
             return d;
