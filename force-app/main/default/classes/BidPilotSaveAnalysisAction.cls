@@ -34,6 +34,12 @@ public with sharing class BidPilotSaveAnalysisAction {
             Savepoint sp = Database.setSavepoint();
             try {
                 Id bidId = BidPilotService.resolveBidId(r.bidReference);
+                String sow = [SELECT SOW_Content__c FROM Bid__c WHERE Id = :bidId].SOW_Content__c;
+                Integer words = String.isBlank(sow) ? 0 : sow.trim().split('\\s+').size();
+                if (words < BidPilotGetSowAction.MIN_WORDS) {
+                    throw new BidPilotService.BidPilotException('This bid has no usable SOW (' + words
+                        + ' words). Upload the SOW PDF on the bid page first; nothing was saved.');
+                }
                 List<Bid_Module__c> modules = parseModules(bidId, r.modulesJson);
                 if (modules.isEmpty()) {
                     throw new BidPilotService.BidPilotException('No modules could be read from the JSON.');

@@ -18,7 +18,9 @@ private class BidPilotTests {
         BidPilotCreateBidAction.Request r = new BidPilotCreateBidAction.Request();
         r.clientName = 'Nila Logistics';
         r.projectTitle = 'Customer Portal';
-        r.sowText = 'Build a customer portal with shipment tracking and SAP integration.';
+        String para = 'Build a B2B customer portal with shipment tracking, SAP invoice integration, WhatsApp notifications, '
+            + 'case management for support agents, data migration from the legacy helpdesk and management dashboards. ';
+        r.sowText = para.repeat(6);
         r.requestedTimelineWeeks = weeks;
         BidPilotCreateBidAction.Response res = BidPilotCreateBidAction.run(new List<BidPilotCreateBidAction.Request>{ r })[0];
         System.assertNotEquals(null, res.bidId, res.message);
@@ -110,6 +112,24 @@ private class BidPilotTests {
         BidPilotAssessRiskAction.Response kr = BidPilotAssessRiskAction.run(new List<BidPilotAssessRiskAction.Request>{ k })[0];
         System.assertEquals(false, kr.requiresApproval, kr.breakdown);
         System.assertEquals('Approved', [SELECT Status__c FROM Bid__c WHERE Id = :b.Id].Status__c);
+    }
+
+    @IsTest
+    static void shortSowIsRejected() {
+        insert new Bid__c(Client_Name__c = 'Tiny Co', Project_Title__c = 'Stub', SOW_Content__c = 'just three words');
+        String bidNo = [SELECT Name FROM Bid__c WHERE Client_Name__c = 'Tiny Co'].Name;
+        BidPilotGetSowAction.Request g = new BidPilotGetSowAction.Request();
+        g.bidReference = bidNo;
+        BidPilotGetSowAction.Response gr = BidPilotGetSowAction.run(new List<BidPilotGetSowAction.Request>{ g })[0];
+        System.assertEquals(null, gr.sowContent);
+        System.assert(gr.message.contains('no usable SOW'), gr.message);
+
+        BidPilotSaveAnalysisAction.Request a = new BidPilotSaveAnalysisAction.Request();
+        a.bidReference = bidNo;
+        a.modulesJson = '[{"name":"Scope Definition","complexity":"High","skill":"Flow"}]';
+        BidPilotSaveAnalysisAction.Response ar = BidPilotSaveAnalysisAction.run(new List<BidPilotSaveAnalysisAction.Request>{ a })[0];
+        System.assert(ar.message.contains('no usable SOW'), ar.message);
+        System.assertEquals(0, [SELECT COUNT() FROM Bid_Module__c]);
     }
 
     @IsTest

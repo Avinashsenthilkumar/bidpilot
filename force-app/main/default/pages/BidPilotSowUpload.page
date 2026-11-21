@@ -66,14 +66,26 @@
         return btoa(binary);
     }
 
+    // The extracted text is handed to the Lightning dashboard, which saves it with Apex.
+    var parentOrigin = (function () {
+        try { return document.referrer ? new URL(document.referrer).origin : '*'; } catch (e) { return '*'; }
+    })();
+    var pending = null;
+
+    window.addEventListener('message', function (event) {
+        var d = event.data;
+        if (!d || d.source !== 'bidpilot-sow-result' || !pending) return;
+        var p = pending; pending = null;
+        d.ok ? p.resolve(d.message) : p.reject(new Error(d.message || 'Save failed'));
+    });
+
     function save(text, fileName, base64) {
         return new Promise(function (resolve, reject) {
-            Visualforce.remoting.Manager.invokeAction(
-                '{!$RemoteAction.BidPilotDocsController.uploadSow}',
-                BID_ID, text, fileName, base64,
-                function (result, event) { event.status ? resolve(result) : reject(new Error(event.message)); },
-                { escape: false, timeout: 120000 }
-            );
+            pending = { resolve: resolve, reject: reject };
+            window.parent.postMessage({ source: 'bidpilot-sow', bidId: BID_ID, text: text, fileName: fileName, base64: base64 }, parentOrigin);
+            setTimeout(function () {
+                if (pending) { pending = null; reject(new Error('Saving took too long. Refresh the page and try again.')); }
+            }, 45000);
         });
     }
 

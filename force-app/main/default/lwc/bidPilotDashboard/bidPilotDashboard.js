@@ -2,6 +2,7 @@ import { LightningElement, api, track } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { NavigationMixin } from 'lightning/navigation';
 import getBidData from '@salesforce/apex/BidPilotDashboardController.getBidData';
+import saveSow from '@salesforce/apex/BidPilotDocsController.saveSow';
 import saveProposalPdf from '@salesforce/apex/BidPilotDocsController.saveProposalPdf';
 import decide from '@salesforce/apex/BidPilotDashboardController.decide';
 
@@ -38,6 +39,8 @@ export default class BidPilotDashboard extends NavigationMixin(LightningElement)
     _snapshot;
 
     connectedCallback() {
+        this._onMessage = this.handleUploadMessage.bind(this);
+        window.addEventListener('message', this._onMessage);
         this.load();
         // eslint-disable-next-line @lwc/lwc/no-async-operation
         this._timer = setInterval(() => {
@@ -48,6 +51,28 @@ export default class BidPilotDashboard extends NavigationMixin(LightningElement)
 
     disconnectedCallback() {
         clearInterval(this._timer);
+        window.removeEventListener('message', this._onMessage);
+    }
+
+    // Text extracted by the Visualforce upload iframe arrives here and is saved with Apex
+    async handleUploadMessage(event) {
+        const d = event.data;
+        if (!d || d.source !== 'bidpilot-sow' || d.bidId !== this.recordId) return;
+        if (!/force\.com$|salesforce\.com$|force-user-content\.com$/.test(new URL(event.origin).hostname)) return;
+        const reply = (ok, message) => {
+            const frame = this.template.querySelector('iframe.upload-frame');
+            if (frame && frame.contentWindow) frame.contentWindow.postMessage({ source: 'bidpilot-sow-result', ok, message }, event.origin);
+        };
+        try {
+            const msg = await saveSow({ bidId: this.recordId, sowText: d.text, fileName: d.fileName, base64Pdf: d.base64 });
+            reply(true, msg);
+            this.toast('SOW uploaded', msg, 'success');
+            await this.load();
+        } catch (e) {
+            const m = e?.body?.message || e?.message || 'Could not save the SOW';
+            reply(false, m);
+            this.toast('Upload failed', m, 'error');
+        }
     }
 
     async load() {

@@ -14,8 +14,18 @@ public with sharing class BidPilotDocsController {
             throw new AuraHandledException('Could not read text from this PDF. It may be a scanned image - paste the SOW text into the SOW Content field instead.');
         }
         Boolean truncated = text.length() > MAX_SOW_CHARS;
+        Savepoint sp = Database.setSavepoint();
         try {
-            update new Bid__c(Id = bidId, SOW_Content__c = text.left(MAX_SOW_CHARS));
+            // A new SOW starts the bid again: clear the old analysis so nothing stale is shown
+            delete [SELECT Id FROM Bid_Module__c WHERE Bid__c = :bidId];
+            delete [SELECT Id FROM Bid_Team_Member__c WHERE Bid__c = :bidId];
+            update new Bid__c(
+                Id = bidId, SOW_Content__c = text.left(MAX_SOW_CHARS), Status__c = 'Draft',
+                Tech_Stack__c = null, Total_Effort_Hours__c = null, Estimated_Cost__c = null, Duration_Weeks__c = null,
+                Risk_Score__c = null, Risk_Level__c = null, Risk_Factors__c = null, Risk_Breakdown__c = null,
+                Calibration_Factor__c = null, Similar_Projects__c = null, Proposal_Summary__c = null,
+                Client_Email_Draft__c = null, Approval_Comments__c = null, Opportunity__c = null
+            );
             if (String.isNotBlank(base64Pdf)) {
                 insert new ContentVersion(
                     Title = 'SOW - ' + (String.isBlank(fileName) ? 'document' : fileName.removeEndIgnoreCase('.pdf')),
@@ -25,11 +35,12 @@ public with sharing class BidPilotDocsController {
                 );
             }
         } catch (Exception e) {
+            Database.rollback(sp);
             throw new AuraHandledException('Could not save the SOW: ' + e.getMessage());
         }
         Integer words = text.split('\\s+').size();
         return 'SOW loaded from ' + fileName + ' (' + words.format() + ' words'
-            + (truncated ? ', trimmed to fit' : '') + '). Now ask BidPilot to analyse it.';
+            + (truncated ? ', trimmed to fit' : '') + '). Previous analysis cleared - ask BidPilot to analyse it.';
     }
 
     /** Called from the BidPilotSowUpload Visualforce page (pdf.js runs there with a real Web Worker). */

@@ -26,6 +26,9 @@ private class BidPilotDocsTests {
         String msg = BidPilotDocsController.saveSow(b.Id, text, 'Nila_SOW.pdf', EncodingUtil.base64Encode(Blob.valueOf('%PDF-1.4')));
         System.assert(msg.contains('Nila_SOW.pdf'), msg);
         System.assert(bid().SOW_Content__c.startsWith('STATEMENT OF WORK'));
+        // a new SOW resets the old analysis
+        System.assertEquals(0, [SELECT COUNT() FROM Bid_Module__c WHERE Bid__c = :b.Id]);
+        System.assertEquals('Draft', [SELECT Status__c FROM Bid__c WHERE Id = :b.Id].Status__c);
         System.assertEquals(1, [SELECT COUNT() FROM ContentDocumentLink WHERE LinkedEntityId = :b.Id]);
     }
 
