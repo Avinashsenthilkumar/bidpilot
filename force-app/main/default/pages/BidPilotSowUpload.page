@@ -1,0 +1,127 @@
+<apex:page controller="BidPilotDocsController" showHeader="false" sidebar="false" standardStylesheets="false"
+           applyHtmlTag="false" applyBodyTag="false" docType="html-5.0">
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+    html, body { margin: 0; padding: 0; background: transparent; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    .wrap { display: flex; align-items: center; justify-content: flex-end; gap: 10px; height: 40px; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #c9cbd4; background: #fff; color: #0b5cab;
+           border-radius: 999px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .btn:hover { background: #f3f6fb; }
+    .btn[disabled] { opacity: 0.6; cursor: default; }
+    .status { font-size: 12px; color: #6b7280; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .status.busy { color: #4f46e5; font-weight: 600; }
+    .status.ok { color: #18794e; font-weight: 600; }
+    .status.err { color: #c62a2f; font-weight: 600; }
+    .spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #c7cbff; border-top-color: #4f46e5; animation: s 0.8s linear infinite; display: inline-block; vertical-align: -2px; margin-right: 4px; }
+    @keyframes s { to { transform: rotate(360deg); } }
+    input[type=file] { display: none; }
+</style>
+<script src="{!URLFOR($Resource.pdfjs, 'pdf.min.js')}"></script>
+</head>
+<body>
+<div class="wrap">
+    <span id="status" class="status"></span>
+    <input id="file" type="file" accept="application/pdf,.pdf"/>
+    <button id="btn" class="btn" type="button">&#8679; Upload SOW PDF</button>
+</div>
+
+<script>
+(function () {
+    var BID_ID = '{!JSENCODE($CurrentPage.parameters.id)}';
+    var LABEL = '{!JSENCODE($CurrentPage.parameters.label)}' || 'Upload SOW PDF';
+    var MAX_ATTACH = 3 * 1024 * 1024;   // attach the original PDF when it is under 3 MB
+    var TIMEOUT_MS = 30000;
+
+    var btn = document.getElementById('btn');
+    var input = document.getElementById('file');
+    var statusEl = document.getElementById('status');
+    btn.textContent = '\u21e7 ' + LABEL;
+
+    function setStatus(text, cls, spinning) {
+        statusEl.className = 'status ' + (cls || '');
+        statusEl.textContent = '';
+        if (spinning) {
+            var sp = document.createElement('span');
+            sp.className = 'spin';
+            statusEl.appendChild(sp);
+        }
+        statusEl.appendChild(document.createTextNode(text));
+        statusEl.title = text;
+    }
+
+    function withTimeout(promise, ms, what) {
+        return new Promise(function (resolve, reject) {
+            var t = setTimeout(function () { reject(new Error(what + ' took too long. Try a smaller PDF.')); }, ms);
+            promise.then(function (v) { clearTimeout(t); resolve(v); }, function (e) { clearTimeout(t); reject(e); });
+        });
+    }
+
+    function toBase64(bytes) {
+        var binary = '', chunk = 0x8000;
+        for (var i = 0; bytes.length > i; i += chunk) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        }
+        return btoa(binary);
+    }
+
+    function save(text, fileName, base64) {
+        return new Promise(function (resolve, reject) {
+            Visualforce.remoting.Manager.invokeAction(
+                '{!$RemoteAction.BidPilotDocsController.uploadSow}',
+                BID_ID, text, fileName, base64,
+                function (result, event) { event.status ? resolve(result) : reject(new Error(event.message)); },
+                { escape: false, timeout: 120000 }
+            );
+        });
+    }
+
+    async function extract(bytes) {
+        var lib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
+        if (!lib) throw new Error('PDF reader not loaded. Check the pdfjs static resource.');
+        lib.GlobalWorkerOptions.workerSrc = '{!URLFOR($Resource.pdfjs, 'pdf.worker.min.js')}';
+        var pdf = await withTimeout(lib.getDocument({ data: bytes, isEvalSupported: false }).promise, TIMEOUT_MS, 'Opening the PDF');
+        var total = pdf.numPages;
+        var pages = new Array(total);
+        var done = 0;
+        // read all pages in parallel - much faster than one by one
+        await withTimeout(Promise.all(Array.from({ length: total }, function (_, i) {
+            return pdf.getPage(i + 1).then(function (page) { return page.getTextContent(); }).then(function (content) {
+                pages[i] = content.items.map(function (it) { return it.str + (it.hasEOL ? '\n' : ' '); }).join('');
+                done++;
+                setStatus('Reading ' + done + ' of ' + total + ' pages…', 'busy', true);
+            });
+        })), TIMEOUT_MS, 'Reading the pages');
+        return pages.join('\n\n');
+    }
+
+    btn.addEventListener('click', function () { input.click(); });
+
+    input.addEventListener('change', async function () {
+        var file = input.files && input.files[0];
+        input.value = '';
+        if (!file) return;
+        if (!/\.pdf$/i.test(file.name)) { setStatus('Please choose a .pdf file', 'err'); return; }
+        btn.disabled = true;
+        var started = Date.now();
+        try {
+            setStatus('Opening ' + file.name + '…', 'busy', true);
+            var buffer = await file.arrayBuffer();
+            var base64 = MAX_ATTACH >= file.size ? toBase64(new Uint8Array(buffer)) : null;
+            var text = await extract(new Uint8Array(buffer.slice(0)));
+            setStatus('Saving…', 'busy', true);
+            await save(text, file.name, base64);
+            var secs = ((Date.now() - started) / 1000).toFixed(1);
+            setStatus('\u2713 Loaded in ' + secs + 's', 'ok');
+        } catch (e) {
+            setStatus(e.message || 'Upload failed', 'err');
+        } finally {
+            btn.disabled = false;
+        }
+    });
+})();
+</script>
+</body>
+</html>
+</apex:page>

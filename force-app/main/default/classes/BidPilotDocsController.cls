@@ -32,6 +32,16 @@ public with sharing class BidPilotDocsController {
             + (truncated ? ', trimmed to fit' : '') + '). Now ask BidPilot to analyse it.';
     }
 
+    /** Called from the BidPilotSowUpload Visualforce page (pdf.js runs there with a real Web Worker). */
+    @RemoteAction
+    public static String uploadSow(String bidId, String sowText, String fileName, String base64Pdf) {
+        try {
+            return saveSow(Id.valueOf(bidId), sowText, fileName, base64Pdf);
+        } catch (AuraHandledException e) {
+            throw new BidPilotService.BidPilotException(e.getMessage());
+        }
+    }
+
     @AuraEnabled
     public static Id saveProposalPdf(Id bidId) {
         try {

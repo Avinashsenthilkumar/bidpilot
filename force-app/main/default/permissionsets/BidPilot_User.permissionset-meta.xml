@@ -308,6 +308,10 @@
         <apexPage>BidPilotProposal</apexPage>
         <enabled>true</enabled>
     </pageAccesses>
+    <pageAccesses>
+        <apexPage>BidPilotSowUpload</apexPage>
+        <enabled>true</enabled>
+    </pageAccesses>
     <tabSettings>
         <tab>Bid__c</tab>
         <visibility>Visible</visibility>

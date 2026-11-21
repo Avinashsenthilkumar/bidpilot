@@ -68,13 +68,9 @@
                     <div class="doc-info">
                         <div class="doc-title">Statement of Work</div>
                         <div class="doc-main">{sowText}</div>
-                        <template lwc:if={uploading}>
-                            <div class="doc-sub busy"><span class="mini-spin"></span>{uploadMsg}</div>
-                        </template>
-                        <template lwc:else><div class="doc-sub">{sowSub}</div></template>
+                        <div class="doc-sub">{sowSub}</div>
                     </div>
-                    <input type="file" accept="application/pdf,.pdf" class="file-input" onchange={handleFile} />
-                    <lightning-button label={uploadLabel} icon-name="utility:upload" onclick={openPicker} disabled={uploading}></lightning-button>
+                    <iframe src={uploadUrl} class="upload-frame" title="Upload SOW PDF"></iframe>
                 </div>
                 <div class="doc-card">
                     <div class="doc-icon i-violet">📑</div>

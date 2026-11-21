@@ -1,15 +1,11 @@
 import { LightningElement, api, track } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { NavigationMixin } from 'lightning/navigation';
-import { loadScript } from 'lightning/platformResourceLoader';
-import PDFJS from '@salesforce/resourceUrl/pdfjs';
 import getBidData from '@salesforce/apex/BidPilotDashboardController.getBidData';
-import saveSow from '@salesforce/apex/BidPilotDocsController.saveSow';
 import saveProposalPdf from '@salesforce/apex/BidPilotDocsController.saveProposalPdf';
 import decide from '@salesforce/apex/BidPilotDashboardController.decide';
 
 const POLL_MS = 4000;
-const MAX_ATTACH_BYTES = 3 * 1024 * 1024; // keep the original PDF if it is under 3 MB
 const FLASH_MS = 1600;
 const ARC = 251.33; // half circumference for r = 80
 const STEPS = ['Draft', 'Analyzed', 'Estimated', 'Team Assigned', 'Approval', 'Proposal Ready'];
@@ -80,6 +76,10 @@ export default class BidPilotDashboard extends NavigationMixin(LightningElement)
             modules: (prev.modules || []).length !== (next.modules || []).length
         };
         const changed = Object.keys(keys).filter((k) => keys[k]);
+        if (prev.sowWords !== next.sowWords && next.sowWords) {
+            this.lastEvent = `New SOW loaded (${this.fmt(next.sowWords)} words). Ask BidPilot to analyse it.`;
+            this.lastEventAt = Date.now();
+        }
         if (prev.status !== next.status && STATUS_EVENT[next.status]) {
             this.lastEvent = STATUS_EVENT[next.status];
             this.lastEventAt = Date.now();
@@ -360,10 +360,8 @@ export default class BidPilotDashboard extends NavigationMixin(LightningElement)
     }
 
     // ---------------------------------------------------------------- SOW PDF upload
-    uploading = false;
-    uploadMsg;
     pdfBusy = false;
-    _pdfjs;
+    _uploadLabel;
 
     get sowLoaded() { return (this.data?.sowWords || 0) > 0; }
     get sowText() {
@@ -372,70 +370,11 @@ export default class BidPilotDashboard extends NavigationMixin(LightningElement)
     get sowSub() {
         return this.sowLoaded ? 'Upload a new PDF to replace it' : 'Upload the client SOW as a PDF';
     }
-    get uploadLabel() { return this.sowLoaded ? 'Replace SOW PDF' : 'Upload SOW PDF'; }
-
-    async ensurePdfJs() {
-        if (this._pdfjs) return this._pdfjs;
-        await loadScript(this, PDFJS + '/pdf.min.js');
-        // Loading the worker on the main thread lets pdf.js run without a Web Worker (works under Lightning security)
-        await loadScript(this, PDFJS + '/pdf.worker.min.js');
-        const lib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
-        if (!lib) throw new Error('The PDF reader could not be loaded.');
-        lib.GlobalWorkerOptions.workerSrc = PDFJS + '/pdf.worker.min.js';
-        this._pdfjs = lib;
-        return lib;
-    }
-
-    openPicker() {
-        this.template.querySelector('input.file-input').click();
-    }
-
-    async handleFile(event) {
-        const file = event.target.files && event.target.files[0];
-        event.target.value = null;
-        if (!file) return;
-        if (!/\.pdf$/i.test(file.name)) {
-            this.toast('Not a PDF', 'Please choose a .pdf file.', 'warning');
-            return;
-        }
-        this.uploading = true;
-        this.uploadMsg = 'Opening PDF…';
-        try {
-            const buffer = await file.arrayBuffer();
-            const base64 = file.size <= MAX_ATTACH_BYTES ? this.toBase64(buffer) : null;
-            const lib = await this.ensurePdfJs();
-            const pdf = await lib.getDocument({ data: new Uint8Array(buffer.slice(0)), isEvalSupported: false }).promise;
-            let text = '';
-            for (let p = 1; p <= pdf.numPages; p++) {
-                this.uploadMsg = `Reading page ${p} of ${pdf.numPages}…`;
-                // eslint-disable-next-line no-await-in-loop
-                const page = await pdf.getPage(p);
-                // eslint-disable-next-line no-await-in-loop
-                const content = await page.getTextContent();
-                text += content.items.map((i) => i.str + (i.hasEOL ? '\n' : ' ')).join('') + '\n\n';
-            }
-            this.uploadMsg = 'Saving SOW…';
-            const msg = await saveSow({ bidId: this.recordId, sowText: text, fileName: file.name, base64Pdf: base64 });
-            this.lastEvent = 'SOW uploaded from ' + file.name;
-            this.lastEventAt = Date.now();
-            this.toast('SOW uploaded', msg, 'success');
-            await this.load();
-        } catch (e) {
-            this.toast('Upload failed', e?.body?.message || e?.message || 'Could not read the PDF', 'error');
-        } finally {
-            this.uploading = false;
-            this.uploadMsg = null;
-        }
-    }
-
-    toBase64(buffer) {
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        const chunk = 0x8000;
-        for (let i = 0; i < bytes.length; i += chunk) {
-            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-        }
-        return btoa(binary);
+    // The PDF is read inside a Visualforce iframe, where pdf.js can use a real Web Worker (fast).
+    // The page saves the text; this dashboard picks it up on its next poll.
+    get uploadUrl() {
+        if (!this._uploadLabel) this._uploadLabel = this.sowLoaded ? 'Replace SOW PDF' : 'Upload SOW PDF';
+        return `/apex/BidPilotSowUpload?id=${this.recordId}&label=${encodeURIComponent(this._uploadLabel)}`;
     }
 
     // ---------------------------------------------------------------- proposal PDF

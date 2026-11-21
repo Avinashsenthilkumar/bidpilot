@@ -30,6 +30,21 @@ private class BidPilotDocsTests {
     }
 
     @IsTest
+    static void remoteUploadSow() {
+        Bid__c b = bid();
+        String msg = BidPilotDocsController.uploadSow(String.valueOf(b.Id),
+            'Statement of work for a Service Cloud rollout with SAP integration, data migration and dashboards.', 'sow.pdf', null);
+        System.assert(msg.contains('sow.pdf'), msg);
+        Boolean failed = false;
+        try {
+            BidPilotDocsController.uploadSow(String.valueOf(b.Id), '', 'scan.pdf', null);
+        } catch (Exception e) {
+            failed = true;
+        }
+        System.assert(failed);
+    }
+
+    @IsTest
     static void saveSowRejectsEmptyText() {
         Boolean failed = false;
         try {
