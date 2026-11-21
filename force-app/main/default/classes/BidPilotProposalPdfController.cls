@@ -1,6 +1,9 @@
 /** Extension for the BidPilotProposal Visualforce page (rendered as PDF). */
 public with sharing class BidPilotProposalPdfController {
 
+    /** Company name printed on every PDF. Change it here if needed. */
+    public static final String COMPANY_NAME = 'Subsel Tech Solution';
+
     public Bid__c bid { get; private set; }
     public List<ModuleLine> modules { get; private set; }
     public List<TeamLine> team { get; private set; }
@@ -50,8 +53,7 @@ public with sharing class BidPilotProposalPdfController {
 
     public BidPilotProposalPdfController(ApexPages.StandardController sc) {
         bid = BidPilotService.getBid(sc.getId());
-        List<Organization> org = [SELECT Name FROM Organization LIMIT 1];
-        companyName = org.isEmpty() ? 'Our company' : org[0].Name;
+        companyName = COMPANY_NAME;
         preparedBy = [SELECT Name FROM User WHERE Id = :bid.OwnerId].Name;
         preparedOn = Date.today().format();
         validUntil = Date.today().addDays(30).format();

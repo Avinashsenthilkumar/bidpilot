@@ -1,0 +1,126 @@
+<apex:component layout="none">
+<!--
+    Fixed company template for every BidPilot PDF.
+    Usage inside a page with renderAs="pdf" applyHtmlTag="false" applyBodyTag="false":
+        <c:BidPilotPdfTemplate docType="Proposal" docTitle="..." subtitle="..." reference="..." preparedFor="...">
+            ...document sections using the classes below (h2, table.grid, .kpis, .note, .ok, .muted)...
+        </c:BidPilotPdfTemplate>
+-->
+
+    <apex:attribute name="docType" type="String" description="Document type shown on the cover, e.g. Proposal" default="Document"/>
+    <apex:attribute name="docTitle" type="String" description="Main title on the cover" required="true"/>
+    <apex:attribute name="subtitle" type="String" description="Line under the title" default=""/>
+    <apex:attribute name="reference" type="String" description="Document reference, e.g. BID-0001" default=""/>
+    <apex:attribute name="preparedFor" type="String" description="Client name for the footer" default=""/>
+    <apex:attribute name="companyName" type="String" description="Company name" default="Subsel Tech Solution"/>
+
+<html>
+<head>
+<style type="text/css">
+    @page {
+        size: A4;
+        margin: 26mm 16mm 20mm 16mm;
+        @top-center { content: element(pageHeader); }
+        @bottom-center { content: element(pageFooter); }
+    }
+    @page :first {
+        margin-top: 14mm;
+        @top-center { content: none; }
+    }
+
+    /* brand */
+    body { font-family: sans-serif; font-size: 10pt; color: #1f2d33; line-height: 1.45; }
+    .teal { color: #4BACC6; }
+    .gold { color: #FFC000; }
+
+    /* running header / footer */
+    .page-header { position: running(pageHeader); width: 100%; }
+    .page-header table { width: 100%; border-collapse: collapse; border-bottom: 2px solid #4BACC6; }
+    .page-header td { padding: 0 0 4px 0; font-size: 8pt; color: #5f6b70; vertical-align: middle; }
+    .page-footer { position: running(pageFooter); width: 100%; }
+    .page-footer table { width: 100%; border-collapse: collapse; border-top: 1px solid #d6e9ee; }
+    .page-footer td { padding-top: 4px; font-size: 7.5pt; color: #8a969b; }
+    .pageno:before { content: "Page " counter(page) " of " counter(pages); }
+
+    /* cover */
+    .cover { border-left: 8px solid #FFC000; background-color: #4BACC6; color: #ffffff; padding: 22px 22px 20px 22px; }
+    .cover-type { font-size: 9pt; letter-spacing: 3px; color: #fff4cc; text-transform: uppercase; }
+    .cover-title { font-size: 22pt; font-weight: bold; margin-top: 6px; color: #ffffff; }
+    .cover-sub { font-size: 11.5pt; margin-top: 6px; color: #eaf6f9; }
+    .brandbar { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+    .brandbar td { vertical-align: middle; }
+    .brand-name { font-size: 15pt; font-weight: bold; color: #1f2d33; }
+    .brand-tag { font-size: 8pt; color: #5f6b70; letter-spacing: 1px; }
+    .stripe { height: 4px; background-color: #FFC000; margin-bottom: 14px; }
+
+    /* content building blocks */
+    h2 { font-size: 13pt; color: #1f2d33; margin: 22px 0 10px 0; padding: 0 0 4px 10px; border-left: 5px solid #FFC000; border-bottom: 1px solid #d6e9ee; }
+    h3 { font-size: 10.5pt; color: #2b7e94; margin: 12px 0 6px 0; }
+    p { margin: 0 0 8px 0; }
+    .meta { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    .meta td { padding: 6px 8px; font-size: 9pt; border-bottom: 1px solid #e3eef1; }
+    .meta td.k { color: #5f6b70; width: 28%; }
+    .kpis { width: 100%; border-collapse: separate; border-spacing: 6px; margin: 6px -6px; }
+    .kpi { background-color: #eaf6f9; border-top: 3px solid #4BACC6; padding: 10px; text-align: center; width: 25%; }
+    .kpi-v { font-size: 14pt; font-weight: bold; color: #1f2d33; }
+    .kpi-l { font-size: 7.5pt; color: #5f6b70; text-transform: uppercase; letter-spacing: 1px; }
+    table.grid { width: 100%; border-collapse: collapse; font-size: 9pt; }
+    table.grid th { background-color: #4BACC6; color: #ffffff; text-align: left; padding: 6px; font-size: 8.5pt; }
+    table.grid td { padding: 6px; border-bottom: 1px solid #e3eef1; vertical-align: top; }
+    table.grid tr.alt td { background-color: #f5fafb; }
+    .num { text-align: right; }
+    .total td { font-weight: bold; background-color: #fff4cc; }
+    .badge-High { color: #c62a2f; font-weight: bold; }
+    .badge-Medium { color: #9a6700; font-weight: bold; }
+    .badge-Low { color: #18794e; font-weight: bold; }
+    .note { background-color: #fff8e0; border-left: 4px solid #FFC000; padding: 8px 10px; font-size: 9pt; margin: 8px 0; }
+    .ok { background-color: #eaf6f9; border-left: 4px solid #4BACC6; padding: 8px 10px; font-size: 9pt; margin: 8px 0; }
+    ul { margin: 4px 0 8px 0; padding-left: 18px; }
+    li { margin-bottom: 3px; }
+    .muted { color: #5f6b70; font-size: 8.5pt; }
+    .sign td { padding-top: 40px; width: 50%; font-size: 9pt; }
+    .line { border-top: 1px solid #1f2d33; padding-top: 4px; width: 80%; }
+    .keep { page-break-inside: avoid; }
+    .pb { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<!-- running header (pages 2+) -->
+<div class="page-header">
+    <table><tr>
+        <td style="width:26px"><apex:image url="{!URLFOR($Resource.SubselLogo)}" height="20"/></td>
+        <td><b>{!companyName}</b></td>
+        <td style="text-align:right">{!docType}<apex:outputText rendered="{!NOT(ISBLANK(reference))}" value=" | {!reference}"/></td>
+    </tr></table>
+</div>
+
+<!-- running footer (all pages) -->
+<div class="page-footer">
+    <table><tr>
+        <td>{!companyName}<apex:outputText rendered="{!NOT(ISBLANK(preparedFor))}" value=" | Confidential - prepared for {!preparedFor}"/></td>
+        <td style="text-align:right"><span class="pageno"></span></td>
+    </tr></table>
+</div>
+
+<!-- cover -->
+<table class="brandbar"><tr>
+    <td style="width:64px"><apex:image url="{!URLFOR($Resource.SubselLogo)}" height="54"/></td>
+    <td>
+        <div class="brand-name">{!companyName}</div>
+        <div class="brand-tag">TECHNOLOGY CONSULTING &amp; DELIVERY</div>
+    </td>
+    <td style="text-align:right; font-size:8.5pt; color:#5f6b70">{!reference}</td>
+</tr></table>
+<div class="cover">
+    <div class="cover-type">{!docType}</div>
+    <div class="cover-title">{!docTitle}</div>
+    <apex:outputPanel layout="none" rendered="{!NOT(ISBLANK(subtitle))}"><div class="cover-sub">{!subtitle}</div></apex:outputPanel>
+</div>
+<div class="stripe"></div>
+
+<apex:componentBody />
+
+</body>
+</html>
+</apex:component>

@@ -1,60 +1,7 @@
 <apex:page standardController="Bid__c" extensions="BidPilotProposalPdfController" renderAs="pdf"
            applyHtmlTag="false" applyBodyTag="false" showHeader="false" sidebar="false" standardStylesheets="false">
-<html>
-<head>
-<style type="text/css">
-    @page {
-        size: A4;
-        margin: 22mm 16mm 20mm 16mm;
-        @top-left { content: "{!JSENCODE(companyName)}  |  Proposal {!JSENCODE(bid.Name)}"; font-family: sans-serif; font-size: 8pt; color: #6b7280; }
-        @bottom-left { content: "Confidential - prepared for {!JSENCODE(bid.Client_Name__c)}"; font-family: sans-serif; font-size: 8pt; color: #6b7280; }
-        @bottom-right { content: "Page " counter(page) " of " counter(pages); font-family: sans-serif; font-size: 8pt; color: #6b7280; }
-    }
-    @page :first { @top-left { content: ""; } }
-    body { font-family: sans-serif; font-size: 10pt; color: #111827; line-height: 1.45; }
-    h1 { font-size: 24pt; margin: 0; color: #ffffff; }
-    h2 { font-size: 13pt; color: #1e1b4b; border-bottom: 2px solid #4f46e5; padding-bottom: 4px; margin: 22px 0 10px 0; }
-    p { margin: 0 0 8px 0; }
-    .cover { background-color: #1e1b4b; color: #ffffff; padding: 26px 24px; }
-    .cover-brand { font-size: 9pt; letter-spacing: 2px; color: #a5b4fc; }
-    .cover-sub { font-size: 12pt; color: #c7d2fe; margin-top: 6px; }
-    .cover-strip { background-color: #4f46e5; height: 6px; }
-    .meta { width: 100%; border-collapse: collapse; margin-top: 14px; }
-    .meta td { padding: 6px 8px; font-size: 9pt; border-bottom: 1px solid #e5e7eb; }
-    .meta td.k { color: #6b7280; width: 28%; }
-    .kpis { width: 100%; border-collapse: separate; border-spacing: 6px; margin: 6px -6px; }
-    .kpi { background-color: #eef0ff; padding: 10px; text-align: center; width: 25%; }
-    .kpi-v { font-size: 15pt; font-weight: bold; color: #1e1b4b; }
-    .kpi-l { font-size: 7.5pt; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; }
-    table.grid { width: 100%; border-collapse: collapse; font-size: 9pt; }
-    table.grid th { background-color: #4f46e5; color: #ffffff; text-align: left; padding: 6px; font-size: 8.5pt; }
-    table.grid td { padding: 6px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
-    table.grid tr.alt td { background-color: #f8f9fc; }
-    .num { text-align: right; }
-    .badge-High { color: #c62a2f; font-weight: bold; }
-    .badge-Medium { color: #9a6700; font-weight: bold; }
-    .badge-Low { color: #18794e; font-weight: bold; }
-    .total td { font-weight: bold; background-color: #eef0ff; }
-    .note { background-color: #fff6e5; border-left: 4px solid #f5a524; padding: 8px 10px; font-size: 9pt; margin: 8px 0; }
-    .ok { background-color: #e9f8ef; border-left: 4px solid #30a46c; padding: 8px 10px; font-size: 9pt; margin: 8px 0; }
-    ul { margin: 4px 0 8px 0; padding-left: 18px; }
-    li { margin-bottom: 3px; }
-    .muted { color: #6b7280; font-size: 8.5pt; }
-    .sign td { padding-top: 40px; width: 50%; font-size: 9pt; }
-    .line { border-top: 1px solid #111827; padding-top: 4px; width: 80%; }
-    .pb { page-break-before: always; }
-    .keep { page-break-inside: avoid; }
-</style>
-</head>
-<body>
-
-<!-- ============ COVER ============ -->
-<div class="cover">
-    <div class="cover-brand">{!UPPER(companyName)}  &#8226;  PROPOSAL</div>
-    <h1>{!bid.Project_Title__c}</h1>
-    <div class="cover-sub">Prepared for {!bid.Client_Name__c}</div>
-</div>
-<div class="cover-strip"></div>
+<c:BidPilotPdfTemplate docType="Proposal" docTitle="{!bid.Project_Title__c}" subtitle="Prepared for {!bid.Client_Name__c}"
+                       reference="{!bid.Name}" preparedFor="{!bid.Client_Name__c}" companyName="{!companyName}">
 
 <table class="meta">
     <tr><td class="k">Proposal reference</td><td>{!bid.Name}</td></tr>
@@ -164,6 +111,5 @@ with a dedicated team of <b>{!team.size}</b>, in about <b>{!duration}</b>, for a
 </table>
 </div>
 
-</body>
-</html>
+</c:BidPilotPdfTemplate>
 </apex:page>
