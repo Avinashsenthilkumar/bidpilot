@@ -133,15 +133,17 @@ public with sharing class BidPilotSuggestTeamAction {
         return res;
     }
 
+    // A person must have at least this much free capacity to be staffed; otherwise the skill
+    // becomes an open position (hire / contractor) instead of stretching the timeline.
+    @TestVisible static final Decimal MIN_FREE_CAPACITY = 40;
+
     private static Resource__c pickResource(List<Resource__c> pool, String skill, Set<Id> used) {
-        Resource__c fallback = null;
         for (Resource__c rr : pool) {
-            Boolean free = rr.Current_Allocation__c == null || rr.Current_Allocation__c < 100;
-            if (free && BidPilotService.skillMatches(skill, rr.Skills__c)) {
-                if (!used.contains(rr.Id)) return rr;
-                if (fallback == null) fallback = rr;
+            Decimal free = 100 - BidPilotService.nz(rr.Current_Allocation__c);
+            if (free >= MIN_FREE_CAPACITY && !used.contains(rr.Id) && BidPilotService.skillMatches(skill, rr.Skills__c)) {
+                return rr;
             }
         }
-        return fallback;
+        return null;
     }
 }
