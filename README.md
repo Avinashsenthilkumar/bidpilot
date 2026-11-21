@@ -12,16 +12,30 @@ BidPilot turns that into a 3-minute conversation, with a human approving every r
 
 ## 1. Deploy (one command)
 
-Prerequisites: Salesforce CLI (`sf`), an org with **Agentforce enabled**
-(an Agentforce-enabled Developer Edition org works), and you are logged in:
+Prerequisites: Salesforce CLI (`sf`) and an org with **Agentforce enabled**
+(an Agentforce-enabled Developer Edition org works).
+
+**Windows (PowerShell):**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\deploy.ps1 -Org bidpilot
+```
+
+**Mac / Linux:**
 
 ```bash
 sf org login web --alias bidpilot
 ./deploy.sh bidpilot
 ```
 
-`deploy.sh` deploys all metadata, assigns the `BidPilot_User` permission set, loads demo
-data (8 resources, 6 past projects, sample bid for *Nila Logistics*) and runs the Apex tests.
+The script logs in, deploys all metadata, assigns the `BidPilot_User` permission set,
+loads demo data (8 resources, 6 past projects, sample bid for *Nila Logistics*) and runs
+the Apex tests.
+
+> If the CLI shows `Missing message metadata.transfer:Finalizing`, that is a known CLI
+> display bug. Check the real result with
+> `sf project deploy report --job-id <id> --target-org bidpilot`. If the status there
+> is *Succeeded*, the deploy worked.
 
 ## 2. Add the live dashboard to the Bid page (1 minute)
 
